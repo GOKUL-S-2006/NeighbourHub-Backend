@@ -1,11 +1,14 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const adminRoutes = require("./src/routes/adminRoutes");
 require("dotenv").config();
 
 const issueRoutes = require("./src/routes/issueRoutes");
 
 const app = express();
+const userRoutes = require("./src/routes/userRoutes");
+const authRoutes = require("./src/routes/authRoutes");
 
 // middleware
 app.use(cors());
@@ -18,7 +21,9 @@ app.get("/", (req, res) => {
 
 // routes
 app.use("/api/issues", issueRoutes);
-
+app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 // mongo connect
 mongoose
   .connect(process.env.MONGO_URI)

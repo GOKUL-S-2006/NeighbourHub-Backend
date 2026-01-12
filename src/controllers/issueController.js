@@ -1,32 +1,113 @@
 const Issue = require("../models/Issue");
 
-const createIssue = async (req, res) => {
+
+// ===================== CREATE ISSUE =====================
+exports.createIssue = async (req, res) => {
   try {
-    const issue = await Issue.create(req.body);
+    const issue = await Issue.create({
+      title: req.body.title,
+      description: req.body.description,
+      category: req.body.category,
+      location: req.body.location,
+      createdBy: req.user.id, // from JWT
+    });
+
     res.status(201).json(issue);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
-const getAllIssues = async (req, res) => {
+
+// ===================== GET ALL ISSUES =====================
+exports.getAllIssues = async (req, res) => {
   try {
-    const issues = await Issue.find();
-    res.status(200).json(issues);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const issues = await Issue.find().sort({ votes: -1 });
+    res.json(issues);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-module.exports = {
-  createIssue,
-  getAllIssues
+
+// ===================== GET MY ISSUES =====================
+exports.getMyIssues = async (req, res) => {
+  try {
+    const issues = await Issue.find({ createdBy: req.user.id })
+      .sort({ createdAt: -1 });
+
+    res.json(issues);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
-const upvoteIssue = async (req, res) => {
+
+
+// ===================== UPVOTE (1 PER USER) =====================
+exports.upvoteIssue = async (req, res) => {
+  try {
+    // optional: block admin voting
+    if (req.user.role === "admin") {
+      return res.status(403).json({ message: "Admins cannot upvote issues" });
+    }
+
+    const issue = await Issue.findById(req.params.id);
+
+    if (!issue) {
+      return res.status(404).json({ message: "Issue not found" });
+    }
+
+    if (issue.votedBy.includes(req.user.id)) {
+      return res.status(400).json({
+        message: "You have already upvoted this issue",
+      });
+    }
+
+    issue.votes += 1;
+    issue.votedBy.push(req.user.id);
+
+    await issue.save();
+    res.json(issue);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+// ===================== UPDATE ISSUE (OWNER ONLY) =====================
+exports.updateIssue = async (req, res) => {
+  try {
+    const issue = await Issue.findById(req.params.id);
+
+    if (!issue) {
+      return res.status(404).json({ message: "Issue not found" });
+    }
+
+    if (issue.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    issue.title = req.body.title ?? issue.title;
+    issue.description = req.body.description ?? issue.description;
+    issue.category = req.body.category ?? issue.category;
+    issue.location = req.body.location ?? issue.location;
+
+    await issue.save();
+    res.json(issue);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+// ===================== UPDATE STATUS (ADMIN ONLY) =====================
+exports.updateStatus = async (req, res) => {
   try {
     const issue = await Issue.findByIdAndUpdate(
       req.params.id,
-      { $inc: { votes: 1 } },
+      { status: req.body.status },
       { new: true }
     );
 
@@ -34,13 +115,33 @@ const upvoteIssue = async (req, res) => {
       return res.status(404).json({ message: "Issue not found" });
     }
 
-    res.status(200).json(issue);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.json(issue);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
-module.exports = {
-  createIssue,
-  getAllIssues,
-  upvoteIssue
+
+
+// ===================== DELETE ISSUE (OWNER OR ADMIN) =====================
+exports.deleteIssue = async (req, res) => {
+  try {
+    const issue = await Issue.findById(req.params.id);
+
+    if (!issue) {
+      return res.status(404).json({ message: "Issue not found" });
+    }
+
+    if (
+      issue.createdBy.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    await issue.deleteOne();
+    res.json({ message: "Issue deleted successfully ✅" });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };

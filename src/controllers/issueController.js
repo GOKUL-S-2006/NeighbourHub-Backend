@@ -22,12 +22,29 @@ exports.createIssue = async (req, res) => {
 // ===================== GET ALL ISSUES =====================
 exports.getAllIssues = async (req, res) => {
   try {
-    const issues = await Issue.find().sort({ votes: -1 });
-    res.json(issues);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Issue.countDocuments();
+
+    const issues = await Issue.find()
+      .sort({ votes: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+      totalCount,
+      data: issues,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 // ===================== GET MY ISSUES =====================

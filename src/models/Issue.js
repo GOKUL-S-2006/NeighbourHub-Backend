@@ -37,7 +37,6 @@ const issueSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // 🔑 Track users who voted (for upvote protection)
     votedBy: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -45,14 +44,12 @@ const issueSchema = new mongoose.Schema(
       },
     ],
 
-    // 🔑 Owner of the issue
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: false,
     },
 
-    // 🧠 AI GENERATED FIELDS
     priority: {
       type: String,
       enum: ["low", "medium", "high"],
@@ -64,7 +61,14 @@ const issueSchema = new mongoose.Schema(
     },
 
     aiConfidence: {
-      type: String, // Low | Medium | High
+      type: String,
+    },
+
+    // ✅ severity now inside the schema object
+    severity: {
+      type: String,
+      enum: ["Low", "Medium", "High", "Emergency"],
+      default: "Low",
     },
   },
   {

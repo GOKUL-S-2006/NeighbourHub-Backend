@@ -6,16 +6,16 @@ const cloudinary = require("../../cloudinary");
 // ===================== CREATE ISSUE =====================
 exports.createIssue = async (req, res) => {
   try {
-    // Backend expects frontend to send 'image' as Cloudinary URL
-    const { title, description, category, location, image } = req.body;
+    const { title, description, category, location, image, severity } = req.body;
 
     const issue = await Issue.create({
       title,
       description,
       category,
       location,
+      image: image || "",
+      severity: severity || "Low",  // ✅ fixed
       createdBy: req.user ? req.user.id : null,
-      image: image || "", // save image URL from frontend, or empty string
     });
 
     res.status(201).json(issue);
@@ -23,7 +23,6 @@ exports.createIssue = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
-
 // ===================== GET ALL ISSUES =====================
 exports.getAllIssues = async (req, res) => {
   try {

@@ -1,15 +1,21 @@
 const Issue = require("../models/Issue");
 
 
+const cloudinary = require("../../cloudinary");
+
 // ===================== CREATE ISSUE =====================
 exports.createIssue = async (req, res) => {
   try {
+    // Backend expects frontend to send 'image' as Cloudinary URL
+    const { title, description, category, location, image } = req.body;
+
     const issue = await Issue.create({
-      title: req.body.title,
-      description: req.body.description,
-      category: req.body.category,
-      location: req.body.location,
-      createdBy: req.user.id, // from JWT
+      title,
+      description,
+      category,
+      location,
+      createdBy: req.user ? req.user.id : null,
+      image: image || "", // save image URL from frontend, or empty string
     });
 
     res.status(201).json(issue);
@@ -18,28 +24,12 @@ exports.createIssue = async (req, res) => {
   }
 };
 
-
 // ===================== GET ALL ISSUES =====================
 exports.getAllIssues = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const totalCount = await Issue.countDocuments();
-
-    const issues = await Issue.find()
-      .sort({ votes: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    res.json({
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit),
-      totalCount,
-      data: issues,
-    });
+    const issues = await Issue.find().sort({ votes: -1 });
+    // issues now have: title, description, location, image (Cloudinary URL)
+    res.json({ data: issues });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -61,37 +51,33 @@ exports.getMyIssues = async (req, res) => {
 
 
 // ===================== UPVOTE (1 PER USER) =====================
+// UPVOTE ISSUE (toggle)
+// ===================== UPVOTE (toggle) =====================
 exports.upvoteIssue = async (req, res) => {
   try {
-    // optional: block admin voting
-    if (req.user.role === "admin") {
-      return res.status(403).json({ message: "Admins cannot upvote issues" });
-    }
-
     const issue = await Issue.findById(req.params.id);
+    if (!issue) return res.status(404).json({ message: "Issue not found" });
 
-    if (!issue) {
-      return res.status(404).json({ message: "Issue not found" });
+    const userId = req.user._id.toString(); // 🔹 convert ObjectId to string
+
+    // 🔹 toggle logic using string comparison
+    if (issue.votedBy.map(id => id.toString()).includes(userId)) {
+      // User already voted → remove vote
+      issue.votes = Math.max(0, issue.votes - 1);
+      issue.votedBy = issue.votedBy.filter(id => id.toString() !== userId);
+    } else {
+      // User hasn't voted → add vote
+      issue.votes += 1;
+      issue.votedBy.push(userId);
     }
-
-    if (issue.votedBy.includes(req.user.id)) {
-      return res.status(400).json({
-        message: "You have already upvoted this issue",
-      });
-    }
-
-    issue.votes += 1;
-    issue.votedBy.push(req.user.id);
 
     await issue.save();
     res.json(issue);
-
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };
-
-
 // ===================== UPDATE ISSUE (OWNER ONLY) =====================
 exports.updateIssue = async (req, res) => {
   try {

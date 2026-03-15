@@ -9,17 +9,15 @@ const {
   updateStatus,
   getMyIssues,
   deleteIssue,
-  updateIssue
-
+  updateIssue,
 } = require("../controllers/issueController");
 
-router.get("/", auth, getAllIssues);
+router.post("/", auth, createIssue);
+router.get("/", getAllIssues);
+router.get("/my", auth, getMyIssues);
 router.put("/:id", auth, updateIssue);
+router.patch("/:id/status", auth, updateStatus);  // ✅ auth added
 router.delete("/:id", auth, deleteIssue);
 router.patch("/:id/upvote", auth, upvoteIssue);
-
-router.patch("/:id/status", updateStatus);
-router.get("/my", auth, getMyIssues);
-
 
 module.exports = router;

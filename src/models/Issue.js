@@ -49,7 +49,22 @@ const issueSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
+    },
+
+    // 🧠 AI GENERATED FIELDS
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "low",
+    },
+
+    aiSummary: {
+      type: String,
+    },
+
+    aiConfidence: {
+      type: String, // Low | Medium | High
     },
   },
   {

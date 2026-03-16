@@ -49,7 +49,7 @@ app.use("/api/issues", issueRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
-
+app.use("/api/news", require("./src/routes/newsRoutes"));
 // MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)

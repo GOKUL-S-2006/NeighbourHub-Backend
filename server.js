@@ -1,10 +1,10 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-require("dotenv").config();
+
 const multer = require("multer");
 const cloudinary = require("./cloudinary"); // create this file for Cloudinary config
-
+const analyzeImage = require('./src/routes/analyzeImage');
 // Import existing routes
 const adminRoutes = require("./src/routes/adminRoutes");
 const issueRoutes = require("./src/routes/issueRoutes");
@@ -16,7 +16,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
-
+require("dotenv").config();
 // Test route
 app.get("/", (req, res) => {
   res.send("NeighbourHub backend running 🚀");
@@ -25,7 +25,7 @@ app.get("/", (req, res) => {
 // Cloudinary upload setup
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
-
+app.use('/api', analyzeImage);
 // Upload endpoint
 app.post("/api/upload", upload.single("image"), async (req, res) => {
   try {

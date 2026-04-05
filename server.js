@@ -10,7 +10,7 @@ const adminRoutes = require("./src/routes/adminRoutes");
 const issueRoutes = require("./src/routes/issueRoutes");
 const userRoutes = require("./src/routes/userRoutes");
 const authRoutes = require("./src/routes/authRoutes");
-
+const verifyRepair = require('./src/routes/verifyRepair');
 const app = express();
 
 // Middleware
@@ -25,6 +25,7 @@ app.get("/", (req, res) => {
 // Cloudinary upload setup
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
+app.use('/api', verifyRepair); // Add this line to include the verifyRepair route
 app.use('/api', analyzeImage);
 // Upload endpoint
 app.post("/api/upload", upload.single("image"), async (req, res) => {

@@ -2,27 +2,16 @@ const Issue = require("../models/Issue");
 const cloudinary = require("../../cloudinary");
 
 // ===================== HELPER: HAVERSINE DISTANCE (meters) =====================
-function getDistanceMeters(loc1, loc2) {
+function getDistanceMeters(lat1, lon1, lat2, lon2) {
   const toRad = (val) => (val * Math.PI) / 180;
-  const R = 6371000; // Earth radius in meters
-  const dLat = toRad(loc2.lat - loc1.lat);
-  const dLon = toRad(loc2.lon - loc1.lon);
+  const R = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(loc1.lat)) * Math.cos(toRad(loc2.lat)) *
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// ===================== HELPER: SIMILARITY CHECK =====================
-function isSimilar(str1, str2) {
-  if (!str1 || !str2) return false;
-  const a = str1.toLowerCase();
-  const b = str2.toLowerCase();
-  // Check if any word from title1 appears in title2
-  const words = a.split(" ").filter((w) => w.length > 3);
-  const matches = words.filter((w) => b.includes(w));
-  return matches.length >= 2; // at least 2 meaningful words match
 }
 
 // ===================== CREATE ISSUE =====================
@@ -30,37 +19,33 @@ exports.createIssue = async (req, res) => {
   try {
     const { title, description, category, location, image, severity } = req.body;
 
-    // ── DUPLICATE DETECTION ──────────────────────────────
+    // ── DUPLICATE DETECTION: 100m radius + same category ──
     if (location) {
       const [lat, lon] = location.split(",").map(Number);
 
-      // Fetch all open/in-progress issues with same category
-      const nearbyIssues = await Issue.find({
+      const activeIssues = await Issue.find({
         status: { $in: ["open", "in-progress"] },
-        category: category || "general",
       });
 
-      for (const existing of nearbyIssues) {
-        // 1. Check location — within 100 meters?
-        const [eLat, eLon] = existing.location.split(",").map(Number);
-        const distance = getDistanceMeters(
-          { lat, lon },
-          { lat: eLat, lon: eLon }
-        );
+      for (const existing of activeIssues) {
+        if (!existing.location) continue;
 
-        if (distance <= 100) {
-          // 2. Check title similarity
-          if (isSimilar(title, existing.title)) {
-            return res.status(409).json({
-              duplicate: true,
-              message: "A similar issue has already been reported nearby.",
-              existing,
-            });
-          }
+        const [eLat, eLon] = existing.location.split(",").map(Number);
+        const distance = getDistanceMeters(lat, lon, eLat, eLon);
+
+        console.log(`Distance to "${existing.title}" [${existing.category}]: ${Math.round(distance)}m`);
+
+        // ✅ Same location (100m) + same category = duplicate
+        if (distance <= 100 && existing.category === category) {
+          return res.status(409).json({
+            duplicate: true,
+            message: "An issue has already been reported in this location.",
+            existing,
+          });
         }
       }
     }
-    // ── END DUPLICATE DETECTION ──────────────────────────
+    // ── END DUPLICATE DETECTION ───────────────────────────
 
     const issue = await Issue.create({
       title,

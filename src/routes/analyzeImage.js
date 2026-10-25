@@ -42,7 +42,7 @@ router.post('/analyze-image', upload.single('image'), async (req, res) => {
     try { fs.unlinkSync(req.file.path); } catch (_) {}
 
     const response = await groq.chat.completions.create({
-     model: "qwen/qwen3.6-27b",
+    model: "qwen/qwen3.8-27b",
       messages: [
         {
           role: 'user',
